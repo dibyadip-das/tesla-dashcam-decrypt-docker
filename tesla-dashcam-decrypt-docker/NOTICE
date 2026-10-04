@@ -1,0 +1,3 @@
+app/tesla_dashcam_decrypt.py and app/requirements.txt are copied unmodified from
+https://github.com/XGxF3/tesla-dashcam-decrypt (commit aceb414, MIT License, author: XGxF3).
+The Docker packaging (Dockerfile, entrypoint.sh, docker-compose.yml) is a wrapper around it.
