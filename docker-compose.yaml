@@ -1,0 +1,55 @@
+services:
+  tesla-dashcam-decrypt:
+    build:
+      # FULL path to the folder on the NAS that contains the Dockerfile.
+      # (UGOS feeds the compose file via stdin, so "." does not work there.)
+      context: /volume1/docker/tesla-dashcam-decrypt/tesla-dashcam-decrypt-docker
+      dockerfile: Dockerfile
+      args:
+        INSTALL_FFMPEG: "true"          # set "false" for a smaller image (disables REMUX)
+    image: tesla-dashcam-decrypt:latest
+    pull_policy: build              # always build locally, never try Docker Hub
+    container_name: tesla-dashcam-decrypt
+ 
+    # "no"            -> run once and stop (use with RUN_MODE: once)
+    # unless-stopped  -> keep running and rescan periodically (use with RUN_MODE: watch)
+    restart: "no"
+ 
+    # Memory cap: the container can never use more than 512 MB of RAM.
+    # memswap_limit equal to mem_limit means no extra swap on top of that.
+    mem_limit: 8g
+    memswap_limit: 8g
+
+    environment:
+      # ── REQUIRED ─────────────────────────────────────────────────────────
+      # Bearer token from dashcam.tesla.com (DevTools -> Network -> any /api/1/
+      # request -> Authorization header -> the part after "Bearer ").
+      # Tokens expire; paste a fresh one and redeploy when you get a 401.
+      TESLA_TOKEN: "eyJhbGciOixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+      # ── OPTIONAL ─────────────────────────────────────────────────────────
+      RUN_MODE: "once"          # once | watch
+      SCAN_INTERVAL: "3600"     # seconds between scans when RUN_MODE=watch
+      BATCH_SIZE: "20"          # files per Tesla API key request
+      REMUX: "false"            # true = lossless ffmpeg remux after decrypt (faststart)
+      DRY_RUN: "false"          # true = fetch keys only, write nothing
+      EXTRA_ARGS: ""            # any extra CLI flags passed straight to the script
+
+      # Owner of the decrypted files on the NAS. Find yours over SSH with: id
+      PUID: "1000"
+      PGID: "10"
+      TZ: "America/New_York"
+
+    volumes:
+      # ── INPUT: folder containing encrypted clips (e.g. the TeslaCam folder) ──
+      # Left side = path on your UGREEN NAS. Mounted read-only for safety.
+      - /volume3/Home_Media/Tesla Cam/2026-08-17/SavedClips:/input:ro
+
+      # ── OUTPUT: where decrypted MP4s are written (folder structure is kept) ──
+      - /volume3/Home_Media/Tesla Cam/2026-08-17/TeslaCam_Decrypted:/output
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
